@@ -16,6 +16,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 serialPico = serial.Serial("COM3", 115200)
 serialPico.write("a".encode('utf-8'))  # Send quit command to the serial device
 
+# Get current date and time for file naming
 datetime_str = datetime.today().strftime('%Y-%m-%d_%H-%M-%S')
 serialPico.write(datetime_str.encode('utf-8')) 
 print(datetime_str)
@@ -23,34 +24,26 @@ print(datetime_str)
 # Command to send
 command = "r"
 
-measurment = 0.0
-
-
+# variables for graph
 plt.style.use('fivethirtyeight')
-# values for first graph
 x_vals = []
 y_vals = []
-
 index = count()
+
+# Measurment/unit variables
+measurment = 0.0
 unit = 'g'
 new_unit = 'g'
 
-latest_serial_value = None
-
+# Recording variables
 isRecStarted = False
 isRecording = False
 fileCnt = 0
 filePath = os.path.dirname(__file__) + "/" + datetime_str + "/"
-
-# filePath = os.path.join(currentDir, "data/")
-# print(filePath)
-
-
-# file = open(filePath + str(fileCnt) + ".csv", "a+")
-# file.write("File Start\n")
-
 startMillis = int(round(time.time() * 1000))
 
+# Misc variables
+latest_serial_value = None
 stop_threads = False
 
 
@@ -89,6 +82,7 @@ def read_serial_data():
     global measurment
     global serialPico
 
+    # Read serial data while window is open and data is available
     while not stop_threads:
         try:
             if serialPico.in_waiting > 0:
@@ -105,27 +99,28 @@ def read_serial_data():
                     
                     value_str = data.split(",")[-1][:-1]  # Optional: Get measurment value for GUI label
                     
-
+                    # If measurment is not a null, set to default value of 10.0
                     try:
                         measurment = float(value_str)
                     except ValueError:
-                        measurment = 10.0  # Default value if conversion fails
-                          # Ignore bad data
-                    
+                        measurment = 10.0  
+
+                    # Record to file is recording is active
                     if isRecording:
-                        # currentMillis = int(round(time.time() * 1000)) - startMillis
                         file.write(f"{data[:-1]},{data[-1:]}\n")
                         
 
         except Exception as e:
             print(f"Error reading serial data: {e}")
             break  # Exit thread on error
-        # time.sleep(0.01)
+
 
 # Create a thread to continuously read serial data in the background
 serial_thread = threading.Thread(target=read_serial_data, daemon=True)
 serial_thread.start()
 
+
+# Function to animate the plot
 def animate(i):
     global startMillis
     global unit
@@ -139,12 +134,11 @@ def animate(i):
     if len(x_vals) > 100:
         x_vals.pop(0)
         y_vals.pop(0)
+
         # Dynamically adjust x-axis if needed
         ax1.set_xlim(max(0, x_vals[0]), x_vals[-1])
-        
 
-
-        # Update the plot line instead of clearing
+    # Update the plot line instead of clearing
     line.set_data(x_vals, y_vals)
 
 
@@ -165,12 +159,10 @@ def toggle_recording():
         os.mkdir(filePath)
 
     if isRecording:
-        # file.close()
         fileCnt += 1
         file = open(filePath + str(fileCnt) + ".csv", "a+")
         recCanvas.itemconfig(recLight, fill='green')
         recState_label.config(text="ON")
-        # canvas.itemconfig(myrectangle, fill='red')
 
     else:
         file.close()
@@ -205,6 +197,10 @@ def unitBtn_click():
 
     unit_label.config(text=unit)
     print(f"Unit")
+
+
+
+###########            MAIN            ###########
 
 # Create GUI
 root = tk.Tk()
@@ -259,30 +255,25 @@ recLight = recCanvas.create_oval(20,40,40,60, fill="red", width=4)
 
 
 ## Layout ##
-label.pack() #.grid(column=0, row=0)
-# top_frame.pack() #.grid(row=1, column=0)
+label.pack() 
 middle_frame.pack()
 bottom_frame.pack()
-canvas.get_tk_widget().pack(side = tk.LEFT, expand = True, fill = tk.BOTH) #.grid(row=2, column=0)
+canvas.get_tk_widget().pack(side = tk.LEFT, expand = True, fill = tk.BOTH) 
 middle_right_frame.pack(side = tk.LEFT, expand = True, fill = tk.BOTH)
 bottom_left_frame.pack(side = tk.LEFT, expand = True, fill = tk.BOTH)
 bottom_right_frame.pack(side = tk.LEFT, expand = True, fill = tk.BOTH)
 
 # Pack the labels in bottom-right frame
-measurment_label.pack(side = tk.LEFT) #.grid(row=0, column=0)
-unit_label.pack(side = tk.LEFT) #.grid(row=0, column=1)
+measurment_label.pack(side = tk.LEFT) 
+unit_label.pack(side = tk.LEFT) 
 
 # Pack the buttons horizontally in bottom-left frame
-tare_button.pack(side = tk.LEFT, expand = True) #.grid(row=0, column=1)
-unit_button.pack(side = tk.LEFT, expand = True) #.grid(row=0, column=2)
-
-rec_label.pack(side = tk.LEFT, expand = True, fill = tk.BOTH) #.grid(row=0, column=0)
-recState_label.pack(side = tk.LEFT, expand = True, fill = tk.BOTH) #.grid(row=0, column=1)
-recCanvas.pack(side = tk.LEFT, expand = True, fill = tk.BOTH) #.grid(row=0, column=2)
-record_button.pack(side = tk.LEFT, expand = True) #.grid(row=0, column=0)
-
-
-# canvas.create_oval(50, 70, 50)
+tare_button.pack(side = tk.LEFT, expand = True) 
+unit_button.pack(side = tk.LEFT, expand = True)
+rec_label.pack(side = tk.LEFT, expand = True, fill = tk.BOTH)
+recState_label.pack(side = tk.LEFT, expand = True, fill = tk.BOTH) 
+recCanvas.pack(side = tk.LEFT, expand = True, fill = tk.BOTH)
+record_button.pack(side = tk.LEFT, expand = True) 
 
 
 # Handles Plot Animation
